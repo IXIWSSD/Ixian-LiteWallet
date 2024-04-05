@@ -70,6 +70,99 @@ namespace LW.Meta
             tiv = new TransactionInclusion();
         }
 
+        // private bool initWallet()
+        // {
+        //     WalletStorage walletStorage = new WalletStorage(Config.walletFile);
+
+        //     Logging.flush();
+
+        //     if (!walletStorage.walletExists())
+        //     {
+        //         ConsoleHelpers.displayBackupText();
+
+        //         // Request a password
+        //         string password = "";
+        //         while (password.Length < 10)
+        //         {
+        //             Logging.flush();
+        //             password = ConsoleHelpers.requestNewPassword("Enter a password for your new wallet: ");
+        //             if (IxianHandler.forceShutdown)
+        //             {
+        //                 return false;
+        //             }
+        //         }
+        //         walletStorage.generateWallet(password);
+        //         generatedNewWallet = true;
+        //     }
+        //     else
+        //     {
+        //         ConsoleHelpers.displayBackupText();
+
+        //         bool success = false;
+        //         while (!success)
+        //         {
+
+        //             string password = "";
+        //             if (password.Length < 10)
+        //             {
+        //                 Logging.flush();
+        //                 Console.Write("Enter wallet password: ");
+        //                 password = ConsoleHelpers.getPasswordInput();
+        //             }
+        //             if (IxianHandler.forceShutdown)
+        //             {
+        //                 return false;
+        //             }
+        //             if (walletStorage.readWallet(password))
+        //             {
+        //                 success = true;
+        //             }
+        //         }
+        //     }
+
+
+        //     if (walletStorage.getPrimaryPublicKey() == null)
+        //     {
+        //         return false;
+        //     }
+
+        //     // Wait for any pending log messages to be written
+        //     Logging.flush();
+
+        //     Console.WriteLine();
+        //     Console.WriteLine("Your IXIAN addresses are: ");
+        //     Console.ForegroundColor = ConsoleColor.Green;
+        //     foreach (var entry in walletStorage.getMyAddressesBase58())
+        //     {
+        //         Console.WriteLine(entry);
+        //     }
+        //     Console.ResetColor();
+        //     Console.WriteLine();
+
+        //     if (Config.onlyShowAddresses)
+        //     {
+        //         return false;
+        //     }
+
+        //     if (walletStorage.viewingWallet)
+        //     {
+        //         Logging.error("Viewing-only wallet {0} cannot be used as the primary wallet.", walletStorage.getPrimaryAddress().ToString());
+        //         return false;
+        //     }
+
+        //     IxianHandler.addWallet(walletStorage);
+
+        //     // Prepare the balances list
+        //     List<Address> address_list = IxianHandler.getWalletStorage().getMyAddresses();
+        //     foreach (Address addr in address_list)
+        //     {
+        //         balances.Add(new Balance(addr, 0));
+        //     }
+
+        //     return true;
+        // }
+
+
         private bool initWallet()
         {
             WalletStorage walletStorage = new WalletStorage(Config.walletFile);
@@ -80,18 +173,59 @@ namespace LW.Meta
             {
                 ConsoleHelpers.displayBackupText();
 
-                // Request a password
+                Console.WriteLine("No wallet found. Choose an option:");
+                Console.WriteLine("1. Import wallet using mnemonics.");
+                Console.WriteLine("2. Create a new wallet with mnemonics.");
+                Console.WriteLine("3. Create a new wallet without mnemonics.");
+
+                string option = Console.ReadLine();
+
+                string mnemonic = "";
                 string password = "";
+
+                switch (option)
+                {
+                    case "1": // Import wallet using mnemonics
+                        Console.WriteLine("Enter your mnemonic phrase:");
+                        mnemonic = Console.ReadLine();
+
+                        break;
+
+                    case "2": // Create a new wallet with mnemonics
+                              // Generate a new mnemonic
+                        Mnemonic mnemo = new Mnemonic(Wordlist.English, WordCount.Twelve);
+                        Console.WriteLine($"Your mnemonic phrase is: {mnemo}");
+                        Console.WriteLine("Write down your mnemonic phrase and keep it in a safe place.");
+                        mnemonic = mnemo.ToString();
+                        break;
+
+                    case "3": // Create a new wallet without mnemonics
+
+                        break;
+                }
+
+                // Request a password
                 while (password.Length < 10)
                 {
                     Logging.flush();
-                    password = ConsoleHelpers.requestNewPassword("Enter a password for your new wallet: ");
+                    password = ConsoleHelpers.requestNewPassword("Enter a password for your wallet: ");
                     if (IxianHandler.forceShutdown)
                     {
                         return false;
                     }
                 }
-                walletStorage.generateWallet(password);
+
+                if (!string.IsNullOrEmpty(mnemonic))
+                {
+                    walletStorage.generateWallet(password, mnemonic);
+
+                }
+                else
+                {
+                    // Generate wallet without mnemonic
+                    walletStorage.generateWallet(password);
+                }
+
                 generatedNewWallet = true;
             }
             else
@@ -99,10 +233,9 @@ namespace LW.Meta
                 ConsoleHelpers.displayBackupText();
 
                 bool success = false;
+                string password = "";
                 while (!success)
                 {
-
-                    string password = "";
                     if (password.Length < 10)
                     {
                         Logging.flush();
@@ -119,7 +252,6 @@ namespace LW.Meta
                     }
                 }
             }
-
 
             if (walletStorage.getPrimaryPublicKey() == null)
             {
@@ -318,7 +450,7 @@ namespace LW.Meta
                 }
             }
 
-            if(block_header.blockNum >= networkBlockHeight)
+            if (block_header.blockNum >= networkBlockHeight)
             {
                 IxianHandler.status = NodeStatus.ready;
                 setNetworkBlock(block_header.blockNum, block_header.blockChecksum, block_header.version);
@@ -328,7 +460,7 @@ namespace LW.Meta
 
         public override ulong getLastBlockHeight()
         {
-            if(tiv.getLastBlockHeader() == null)
+            if (tiv.getLastBlockHeader() == null)
             {
                 return 0;
             }
@@ -347,7 +479,7 @@ namespace LW.Meta
 
         public override int getLastBlockVersion()
         {
-            if (tiv.getLastBlockHeader() == null 
+            if (tiv.getLastBlockHeader() == null
                 || tiv.getLastBlockHeader().version < Block.maxVersion)
             {
                 // TODO Omega force to v10 after upgrade
